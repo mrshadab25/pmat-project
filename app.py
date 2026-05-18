@@ -563,45 +563,116 @@ def analyze():
 
     file = request.files['pdf']
 
-    return jsonify({
+    if 'pdf' not in request.files:
+        return jsonify({
+            "error": "No file uploaded"
+        })
 
-        "risk": {
-            "score": 20,
-            "severity": "LOW",
-            "breakdown": [
-                "PDF structure analyzed",
-                "No malicious JavaScript found",
-                "No suspicious objects detected"
-            ]
-        },
+    file = request.files['pdf']
 
-        "file_info": {
-            "filename": file.filename,
-            "size_human": "PDF Uploaded",
-            "md5": "demo-md5-value"
-        },
+    text = ""
+    suspicious_keywords = [
+        "/JavaScript",
+        "/JS",
+        "/OpenAction",
+        "/Launch",
+        "cmd.exe",
+        "powershell",
+        "http://",
+        "https://"
+    ]
 
-        "objects": {
-            "page_count": 1,
-            "total_objects": 15
-        },
+    found_keywords = []
+    urls = []
 
-        "javascript": {
-            "js_block_count": 0,
-            "obfuscation_patterns": [],
-            "auto_actions": []
-        },
+    try:
 
-        "iocs": {
-            "urls": [],
-            "ips": [],
-            "cves": [],
-            "embedded_files": [],
-            "emails": []
-        },
+        pdf_reader = PdfReader(file)
 
-        "analysis_time_seconds": 1
-    })
+        for page in pdf_reader.pages:
+
+            extracted = page.extract_text()
+
+            if extracted:
+                text += extracted
+
+        text_lower = text.lower()
+
+        score = 0
+
+        for keyword in suspicious_keywords:
+
+            if keyword.lower() in text_lower:
+
+                found_keywords.append(keyword)
+
+                score += 10
+
+        words = text.split()
+
+        for word in words:
+
+            if word.startswith("http://") or word.startswith("https://"):
+
+                urls.append(word)
+
+                score += 5
+
+        if score > 100:
+            score = 100
+
+        severity = "CLEAN"
+
+        if score >= 70:
+            severity = "HIGH"
+
+        elif score >= 40:
+            severity = "MEDIUM"
+
+        elif score >= 10:
+            severity = "LOW"
+
+        return jsonify({
+
+            "risk": {
+                "score": score,
+                "severity": severity,
+                "breakdown": found_keywords
+            },
+
+            "file_info": {
+                "filename": file.filename,
+                "size_human": "Uploaded PDF",
+                "md5": "generated-demo-md5"
+            },
+
+            "objects": {
+                "page_count": len(pdf_reader.pages),
+                "total_objects": len(found_keywords)
+            },
+
+            "javascript": {
+                "js_block_count": text.count("/JS"),
+                "obfuscation_patterns": [],
+                "auto_actions": []
+            },
+
+            "iocs": {
+                "urls": urls,
+                "ips": [],
+                "cves": [],
+                "embedded_files": [],
+                "emails": []
+            },
+
+            "analysis_time_seconds": 1
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "error": str(e)
+        })
 
 if __name__ == "__main__":
     app.run()
