@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template_string
+from flask import Flask, request, render_template_string, jsonify
 from PyPDF2 import PdfReader
 
 app = Flask(__name__)
@@ -548,6 +548,10 @@ function renderResult(d) {
 </body>
 </html>
 """
+
+@app.route('/')
+def home():
+    return render_template_string(HTML)
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
