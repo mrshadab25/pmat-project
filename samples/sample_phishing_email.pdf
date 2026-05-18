@@ -1,0 +1,83 @@
+%PDF-1.5
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+
+3 0 obj
+<< /Type /Page
+   /Parent 2 0 R
+   /MediaBox [0 0 612 792]
+   /Annots [6 0 R 7 0 R]
+   /Resources << /Font << /F1 4 0 R >> >>
+   /Contents 5 0 R
+>>
+endobj
+
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+
+5 0 obj
+<< /Length 160 >>
+stream
+BT
+/F1 12 Tf
+50 750 Td
+(URGENT: Your account has been suspended.) Tj
+0 -20 Td
+(Click the link below to verify your identity immediately.) Tj
+0 -20 Td
+(Failure to verify within 24 hours will result in account closure.) Tj
+ET
+endstream
+endobj
+
+6 0 obj
+<< /Type /Annot
+   /Subtype /Link
+   /Rect [50 680 400 700]
+   /A << /S /URI /URI (http://phishing-bank-secure.xyz/login?redirect=steal) >>
+>>
+endobj
+
+7 0 obj
+<< /Type /Annot
+   /Subtype /Link
+   /Rect [50 650 400 670]
+   /A << /S /URI /URI (http://192.168.1.105/track?uid=victim_8821) >>
+>>
+endobj
+
+8 0 obj
+<< /Author ()
+   /Creator (Unknown)
+   /Producer (PDF Producer 1.0)
+   /CreationDate (D:20231201000000)
+   /ModDate (D:20240115123000)
+   /Title (Account Verification Required)
+>>
+endobj
+
+xref
+0 9
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000280 00000 n 
+0000000358 00000 n 
+0000000570 00000 n 
+0000000720 00000 n 
+0000000860 00000 n 
+
+trailer
+<< /Size 9 /Root 1 0 R /Info 8 0 R >>
+startxref
+1050
+%%EOF
+%%EOF
+%%EOF

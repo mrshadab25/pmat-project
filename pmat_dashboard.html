@@ -1,0 +1,1792 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PMAT — PDF Malware Analysis Toolkit</title>
+  <meta name="description" content="Browser-based PDF static analysis for SOC teams — no upload, fully private.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+  <style>
+    @keyframes pulse-ring {
+
+      0%,
+      100% {
+        opacity: .6;
+        transform: scale(1)
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.04)
+      }
+    }
+
+    @keyframes scan-line {
+      0% {
+        top: -2px
+      }
+
+      100% {
+        top: 100%
+      }
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: -400px 0
+      }
+
+      100% {
+        background-position: 400px 0
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --bg: #0d0f14;
+      --bg2: #13151c;
+      --bg3: #1a1d26;
+      --border: #ffffff14;
+      --border2: #ffffff22;
+      --text: #e8eaf0;
+      --text2: #8b90a0;
+      --text3: #555a6a;
+      --red: #e24b4a;
+      --red2: #f09595;
+      --red-bg: #1a0f0f;
+      --orange: #ef9f27;
+      --orange2: #FAC775;
+      --orange-bg: #1a1200;
+      --yellow: #d4b44a;
+      --yellow-bg: #17140a;
+      --green: #1D9E75;
+      --green2: #5DCAA5;
+      --green-bg: #0a1612;
+      --blue: #378ADD;
+      --blue2: #85B7EB;
+      --blue-bg: #0a1220;
+      --purple: #7F77DD;
+      --purple2: #AFA9EC;
+      --radius: 10px;
+      --radius-lg: 14px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh
+    }
+
+    .app {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 0.5px solid var(--border)
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px
+    }
+
+    .logo-icon {
+      width: 38px;
+      height: 38px;
+      background: var(--blue-bg);
+      border: 0.5px solid var(--blue);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--blue);
+      font-size: 18px
+    }
+
+    .logo-text h1 {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: 0.02em
+    }
+
+    .logo-text p {
+      font-size: 11px;
+      color: var(--text3);
+      letter-spacing: 0.05em;
+      text-transform: uppercase
+    }
+
+    .badge {
+      background: var(--blue-bg);
+      border: 0.5px solid var(--blue);
+      color: var(--blue2);
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      letter-spacing: 0.04em
+    }
+
+    .upload-zone {
+      border: 1.5px dashed var(--border2);
+      border-radius: var(--radius-lg);
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      background: var(--bg2);
+      margin-bottom: 1.5rem
+    }
+
+    .upload-zone:hover,
+    .upload-zone.dragover {
+      border-color: var(--blue);
+      background: var(--blue-bg)
+    }
+
+    .upload-zone.dragover {
+      transform: scale(1.01)
+    }
+
+    .upload-icon {
+      font-size: 40px;
+      color: var(--text3);
+      margin-bottom: 1rem;
+      display: block;
+      transition: color .2s
+    }
+
+    .upload-zone:hover .upload-icon,
+    .upload-zone.dragover .upload-icon {
+      color: var(--blue)
+    }
+
+    .upload-title {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 6px
+    }
+
+    .upload-sub {
+      font-size: 13px;
+      color: var(--text2)
+    }
+
+    .upload-sub span {
+      color: var(--blue);
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px
+    }
+
+    #fileInput {
+      display: none
+    }
+
+    .file-info {
+      margin-top: 1rem;
+      padding: 10px 16px;
+      background: var(--bg3);
+      border-radius: 8px;
+      border: 0.5px solid var(--border);
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      display: none
+    }
+
+    .file-info i {
+      color: var(--blue);
+      font-size: 18px
+    }
+
+    .file-name {
+      font-weight: 500;
+      flex: 1
+    }
+
+    .file-size {
+      color: var(--text2)
+    }
+
+    .remove-file {
+      color: var(--text3);
+      cursor: pointer;
+      padding: 4px
+    }
+
+    .remove-file:hover {
+      color: var(--red2)
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .15s
+    }
+
+    .btn-primary {
+      background: var(--blue);
+      color: #fff
+    }
+
+    .btn-primary:hover {
+      background: #4a97e8;
+      transform: translateY(-1px)
+    }
+
+    .btn-primary:active {
+      transform: translateY(0)
+    }
+
+    .btn-primary:disabled {
+      background: #2a3a4a;
+      color: var(--text3);
+      cursor: not-allowed;
+      transform: none
+    }
+
+    .btn-secondary {
+      background: var(--bg3);
+      border: 0.5px solid var(--border2);
+      color: var(--text2)
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg2);
+      color: var(--text)
+    }
+
+    .btn-sm {
+      padding: 6px 14px;
+      font-size: 12px
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 2rem
+    }
+
+    .progress-wrap {
+      display: none;
+      margin-bottom: 2rem
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text2);
+      margin-bottom: 8px
+    }
+
+    .progress-bar-bg {
+      background: var(--bg3);
+      border-radius: 20px;
+      height: 6px;
+      overflow: hidden;
+      border: 0.5px solid var(--border)
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: var(--blue);
+      border-radius: 20px;
+      width: 0%;
+      transition: width .4s ease
+    }
+
+    .progress-steps {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      flex-wrap: wrap
+    }
+
+    .step-pill {
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 0.5px solid var(--border);
+      color: var(--text3);
+      background: var(--bg3);
+      transition: all .3s
+    }
+
+    .step-pill.active {
+      border-color: var(--blue);
+      color: var(--blue2);
+      background: var(--blue-bg)
+    }
+
+    .step-pill.done {
+      border-color: var(--green);
+      color: var(--green2);
+      background: var(--green-bg)
+    }
+
+    .step-pill.error {
+      border-color: var(--red);
+      color: var(--red2);
+      background: var(--red-bg)
+    }
+
+    .results {
+      display: none
+    }
+
+    .score-section {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem
+    }
+
+    .score-card {
+      background: var(--bg2);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center
+    }
+
+    .score-ring-wrap {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin-bottom: 1rem
+    }
+
+    .score-ring {
+      transform: rotate(-90deg)
+    }
+
+    .score-ring-bg {
+      fill: none;
+      stroke: var(--bg3);
+      stroke-width: 10
+    }
+
+    .score-ring-fill {
+      fill: none;
+      stroke-width: 10;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1.2s ease, stroke .5s
+    }
+
+    .score-number {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center
+    }
+
+    .score-number span:first-child {
+      font-size: 30px;
+      font-weight: 700;
+      line-height: 1
+    }
+
+    .score-number span:last-child {
+      font-size: 11px;
+      color: var(--text2);
+      margin-top: 2px
+    }
+
+    .severity-badge {
+      font-size: 13px;
+      font-weight: 600;
+      padding: 5px 16px;
+      border-radius: 20px;
+      letter-spacing: 0.05em
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px
+    }
+
+    .stat-card {
+      background: var(--bg2);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 5px
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 600
+    }
+
+    .stat-sub {
+      font-size: 11px;
+      color: var(--text2);
+      margin-top: 3px
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem
+    }
+
+    .panel {
+      background: var(--bg2);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden
+    }
+
+    .panel-header {
+      padding: 14px 18px;
+      border-bottom: 0.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    .panel-title {
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .panel-title i {
+      font-size: 16px
+    }
+
+    .panel-body {
+      padding: 18px
+    }
+
+    .panel-full {
+      grid-column: 1/-1
+    }
+
+    .finding-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 0.5px solid var(--border);
+      font-size: 12px
+    }
+
+    .finding-row:last-child {
+      border-bottom: none
+    }
+
+    .sev-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 4px
+    }
+
+    .finding-kw {
+      font-weight: 500;
+      min-width: 130px;
+      font-family: monospace;
+      font-size: 11px
+    }
+
+    .finding-desc {
+      color: var(--text2);
+      flex: 1
+    }
+
+    .finding-pts {
+      font-weight: 600;
+      font-size: 11px;
+      min-width: 36px;
+      text-align: right
+    }
+
+    .ioc-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: monospace;
+      margin: 3px;
+      word-break: break-all
+    }
+
+    .ioc-url {
+      background: var(--orange-bg);
+      border: 0.5px solid var(--orange);
+      color: var(--orange2)
+    }
+
+    .ioc-ip {
+      background: var(--red-bg);
+      border: 0.5px solid var(--red);
+      color: var(--red2)
+    }
+
+    .ioc-file {
+      background: #150a1a;
+      border: 0.5px solid var(--purple);
+      color: var(--purple2)
+    }
+
+    .ioc-cve {
+      background: #0a0a1a;
+      border: 0.5px solid var(--blue);
+      color: var(--blue2)
+    }
+
+    .empty-state {
+      color: var(--text3);
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 0
+    }
+
+    .mit-list {
+      list-style: none
+    }
+
+    .mit-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 0.5px solid var(--border);
+      font-size: 12px;
+      color: var(--text2)
+    }
+
+    .mit-list li:last-child {
+      border-bottom: none
+    }
+
+    .mit-list li i {
+      color: var(--green2);
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-top: 2px
+    }
+
+    .meta-table {
+      width: 100%;
+      font-size: 12px;
+      border-collapse: collapse
+    }
+
+    .meta-table td {
+      padding: 5px 0;
+      vertical-align: top
+    }
+
+    .meta-table td:first-child {
+      color: var(--text3);
+      width: 110px;
+      padding-right: 12px
+    }
+
+    .meta-table td:last-child {
+      color: var(--text);
+      font-family: monospace;
+      font-size: 11px;
+      word-break: break-all
+    }
+
+    .hash-row {
+      padding: 4px 0;
+      border-bottom: 0.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px
+    }
+
+    .hash-row:last-child {
+      border-bottom: none
+    }
+
+    .hash-label {
+      color: var(--text3);
+      width: 55px;
+      flex-shrink: 0
+    }
+
+    .hash-val {
+      font-family: monospace;
+      color: var(--text2);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .copy-btn {
+      color: var(--text3);
+      cursor: pointer;
+      flex-shrink: 0;
+      padding: 2px
+    }
+
+    .copy-btn:hover {
+      color: var(--blue)
+    }
+
+    .download-bar {
+      background: var(--bg2);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    .download-info {
+      font-size: 13px;
+      color: var(--text2)
+    }
+
+    .download-btns {
+      display: flex;
+      gap: 8px
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 200px;
+      width: 100%
+    }
+
+    .anomaly-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 0.5px solid var(--border);
+      font-size: 12px
+    }
+
+    .anomaly-item:last-child {
+      border-bottom: none
+    }
+
+    .anomaly-item i {
+      color: var(--orange);
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-top: 2px
+    }
+
+    .anomaly-item span {
+      color: var(--text2)
+    }
+
+    .error-banner {
+      background: var(--red-bg);
+      border: 0.5px solid var(--red);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      color: var(--red2);
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 1rem;
+      display: none
+    }
+
+    @media(max-width:640px) {
+      .score-section {
+        grid-template-columns: 1fr
+      }
+
+      .panels {
+        grid-template-columns: 1fr
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr 1fr
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="logo">
+        <div class="logo-icon"><i class="ti ti-shield-search"></i></div>
+        <div class="logo-text">
+          <h1>PMAT</h1>
+          <p>PDF Malware Analysis Toolkit</p>
+        </div>
+      </div>
+      <span class="badge">v1.0 &nbsp;·&nbsp; Educational Use Only</span>
+    </header>
+
+    <div class="upload-zone" id="dropZone">
+      <i class="ti ti-file-type-pdf upload-icon"></i>
+      <div class="upload-title">Drop your PDF here to analyze</div>
+      <div class="upload-sub">or <span onclick="document.getElementById('fileInput').click()">browse to upload</span>
+      </div>
+      <div class="upload-sub" style="margin-top:6px;font-size:11px;color:var(--text3)">Max 10 MB &nbsp;·&nbsp; PDF only
+        &nbsp;·&nbsp; Static analysis — file never leaves your browser</div>
+      <div class="file-info" id="fileInfo">
+        <i class="ti ti-file-filled"></i>
+        <span class="file-name" id="fileName">—</span>
+        <span class="file-size" id="fileSize">—</span>
+        <span class="remove-file" onclick="removeFile()" title="Remove"><i class="ti ti-x"></i></span>
+      </div>
+      <input type="file" id="fileInput" accept=".pdf">
+    </div>
+
+    <div class="error-banner" id="errorBanner">
+      <i class="ti ti-alert-circle" style="font-size:18px;flex-shrink:0"></i>
+      <span id="errorMsg"></span>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="analyzeBtn" disabled onclick="startAnalysis()">
+        <i class="ti ti-scan"></i> Analyze PDF
+      </button>
+      <button class="btn btn-secondary" onclick="resetApp()">
+        <i class="ti ti-refresh"></i> Reset
+      </button>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-label">
+        <span id="progressLabel">Initializing...</span>
+        <span id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="progress-steps" id="progressSteps"></div>
+    </div>
+
+    <div class="results" id="resultsSection">
+      <div class="score-section">
+        <div class="score-card">
+          <div class="score-ring-wrap">
+            <svg class="score-ring" width="120" height="120" viewBox="0 0 120 120" role="img"
+              aria-label="Risk score gauge">
+              <circle class="score-ring-bg" cx="60" cy="60" r="50" />
+              <circle class="score-ring-fill" id="scoreRing" cx="60" cy="60" r="50" stroke-dasharray="314"
+                stroke-dashoffset="314" />
+            </svg>
+            <div class="score-number">
+              <span id="scoreNum">0</span>
+              <span>/ 100</span>
+            </div>
+          </div>
+          <span class="severity-badge" id="severityBadge">CLEAN</span>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label"><i class="ti ti-key" style="font-size:13px"></i>Keywords</div>
+            <div class="stat-value" id="statKeywords">0</div>
+            <div class="stat-sub">suspicious found</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label"><i class="ti ti-brand-javascript" style="font-size:13px"></i>JS Blocks</div>
+            <div class="stat-value" id="statJS">0</div>
+            <div class="stat-sub">code blocks</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label"><i class="ti ti-link" style="font-size:13px"></i>IOCs</div>
+            <div class="stat-value" id="statIOC">0</div>
+            <div class="stat-sub">indicators found</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label"><i class="ti ti-file-zip" style="font-size:13px"></i>Streams</div>
+            <div class="stat-value" id="statStreams">0</div>
+            <div class="stat-sub">decoded</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label"><i class="ti ti-alert-triangle" style="font-size:13px"></i>Obfuscations</div>
+            <div class="stat-value" id="statObfus">0</div>
+            <div class="stat-sub">patterns detected</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label"><i class="ti ti-clock" style="font-size:13px"></i>File size</div>
+            <div class="stat-value" id="statSize">—</div>
+            <div class="stat-sub">uploaded file</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i class="ti ti-chart-bar"></i> Score breakdown</div>
+          </div>
+          <div class="panel-body">
+            <div class="chart-wrap"><canvas id="breakdownChart" role="img"
+                aria-label="Score breakdown bar chart"></canvas></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i class="ti ti-key"></i> Keyword findings</div>
+          </div>
+          <div class="panel-body" id="keywordsPanel" style="padding:10px 18px">
+            <div class="empty-state"><i class="ti ti-check-circle"></i> No findings</div>
+          </div>
+        </div>
+        <div class="panel panel-full">
+          <div class="panel-header">
+            <div class="panel-title"><i class="ti ti-radar"></i> Indicators of Compromise (IOCs)</div>
+          </div>
+          <div class="panel-body" id="iocPanel">
+            <div class="empty-state"><i class="ti ti-check-circle"></i> No IOCs detected</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i class="ti ti-brand-javascript"></i> JavaScript analysis</div>
+          </div>
+          <div class="panel-body" id="jsPanel">
+            <div class="empty-state"><i class="ti ti-check-circle"></i> No JavaScript</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i class="ti ti-alert-triangle"></i> Metadata anomalies</div>
+          </div>
+          <div class="panel-body" id="metaAnomalies">
+            <div class="empty-state"><i class="ti ti-check-circle"></i> No anomalies</div>
+          </div>
+        </div>
+        <div class="panel panel-full">
+          <div class="panel-header">
+            <div class="panel-title"><i class="ti ti-file-info"></i> File information & hashes</div>
+          </div>
+          <div class="panel-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+              <div>
+                <table class="meta-table" id="metaTable">
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div id="hashPanel"></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel panel-full">
+          <div class="panel-header">
+            <div class="panel-title"><i class="ti ti-shield-check"></i> Mitigation recommendations</div>
+          </div>
+          <div class="panel-body">
+            <ul class="mit-list" id="mitList"></ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="download-bar">
+        <div>
+          <div style="font-size:14px;font-weight:500">Analysis complete</div>
+          <div class="download-info" id="downloadInfo">Report ready</div>
+        </div>
+        <div class="download-btns">
+          <button class="btn btn-secondary btn-sm" onclick="downloadJSON()"><i class="ti ti-download"></i> JSON</button>
+          <button class="btn btn-secondary btn-sm" onclick="downloadTXT()"><i class="ti ti-file-text"></i> TXT
+            Report</button>
+          <button class="btn btn-primary btn-sm" onclick="resetApp()"><i class="ti ti-refresh"></i> New scan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script>
+    // ─────────────────────────────────────────────────
+    // PMAT Frontend Engine — Pure JS Static PDF Analyzer
+    // Reads the actual uploaded PDF bytes and extracts
+    // real indicators. No server needed.
+    // ─────────────────────────────────────────────────
+
+    let currentFile = null;
+    let lastResult = null;
+    let chartInst = null;
+
+    const STEPS = ["Loading", "Metadata", "Objects", "Keywords", "Streams", "IOCs", "JavaScript", "Scoring", "Report"];
+
+    const SEV_COLORS = {
+      CRITICAL: { bg: "#1a0f0f", border: "#e24b4a", text: "#f09595", ring: "#e24b4a" },
+      HIGH: { bg: "#1a1200", border: "#ef9f27", text: "#FAC775", ring: "#ef9f27" },
+      MEDIUM: { bg: "#17140a", border: "#d4b44a", text: "#d4b44a", ring: "#d4b44a" },
+      LOW: { bg: "#0a1220", border: "#378ADD", text: "#85B7EB", ring: "#378ADD" },
+      CLEAN: { bg: "#0a1612", border: "#1D9E75", text: "#5DCAA5", ring: "#1D9E75" },
+    };
+    const DOT_COLORS = { CRITICAL: "#e24b4a", HIGH: "#ef9f27", MEDIUM: "#d4b44a", LOW: "#378ADD", INFO: "#555a6a", CLEAN: "#1D9E75" };
+
+    // ── Keyword database (matches your PMAT modules/keywords.py) ──
+    const KEYWORD_DB = [
+      { kw: "/JavaScript", sev: "CRITICAL", pts: 10, desc: "Embedded JavaScript execution" },
+      { kw: "/JS", sev: "CRITICAL", pts: 10, desc: "JavaScript shorthand" },
+      { kw: "/OpenAction", sev: "HIGH", pts: 8, desc: "Auto-execute on document open" },
+      { kw: "/Launch", sev: "CRITICAL", pts: 10, desc: "External process launch" },
+      { kw: "/EmbeddedFile", sev: "HIGH", pts: 7, desc: "Embedded file payload" },
+      { kw: "/XFA", sev: "HIGH", pts: 6, desc: "XFA form exploit surface" },
+      { kw: "/RichMedia", sev: "HIGH", pts: 5, desc: "Rich media exploit surface" },
+      { kw: "/AcroForm", sev: "MEDIUM", pts: 4, desc: "Acrobat form present" },
+      { kw: "/AA", sev: "MEDIUM", pts: 4, desc: "Additional Actions hook" },
+      { kw: "/SubmitForm", sev: "MEDIUM", pts: 5, desc: "Form data submission" },
+      { kw: "/ImportData", sev: "MEDIUM", pts: 4, desc: "External data import" },
+      { kw: "/GoToR", sev: "MEDIUM", pts: 3, desc: "Remote document reference" },
+      { kw: "/URI", sev: "MEDIUM", pts: 3, desc: "External URL reference" },
+      { kw: "/ObjStm", sev: "LOW", pts: 3, desc: "Object stream (may hide objects)" },
+      { kw: "/ASCIIHexDecode", sev: "LOW", pts: 2, desc: "ASCII hex encoded stream" },
+      { kw: "/ASCII85Decode", sev: "LOW", pts: 2, desc: "ASCII85 encoded stream" },
+      { kw: "getAnnots", sev: "HIGH", pts: 8, desc: "Known exploit method (CVE-2009-0927)" },
+      { kw: "getIcon", sev: "HIGH", pts: 8, desc: "Known exploit method" },
+      { kw: "spell.customDictionaryOpen", sev: "CRITICAL", pts: 10, desc: "CVE-2009-0927 exploit string" },
+      { kw: "media.newPlayer", sev: "CRITICAL", pts: 10, desc: "CVE-2009-4324 exploit string" },
+      { kw: "Collab.collectEmailInfo", sev: "CRITICAL", pts: 10, desc: "CVE-2007-0478 exploit string" },
+      { kw: "util.printf", sev: "HIGH", pts: 9, desc: "CVE-2008-2992 format string" },
+      { kw: "eval(", sev: "HIGH", pts: 7, desc: "Dynamic code evaluation" },
+      { kw: "unescape(", sev: "HIGH", pts: 6, desc: "String unescaping obfuscation" },
+      { kw: "String.fromCharCode", sev: "HIGH", pts: 6, desc: "Char-code obfuscation" },
+      { kw: "this.exportDataObject", sev: "HIGH", pts: 8, desc: "File export function" },
+      { kw: "app.openDoc", sev: "HIGH", pts: 7, desc: "Opens files via JavaScript" },
+      { kw: "app.launchURL", sev: "HIGH", pts: 7, desc: "Launches URL via JavaScript" },
+      { kw: "WScript.Shell", sev: "CRITICAL", pts: 10, desc: "Windows shell execution" },
+      { kw: "powershell", sev: "CRITICAL", pts: 10, desc: "PowerShell invocation" },
+    ];
+
+    const OBFUSCATION_PATTERNS = [
+      { re: /\beval\s*\(/i, sev: "HIGH", desc: "eval() — dynamic code execution" },
+      { re: /\bunescape\s*\(/i, sev: "HIGH", desc: "unescape() — string obfuscation" },
+      { re: /String\.fromCharCode/i, sev: "HIGH", desc: "String.fromCharCode() — char-code obfuscation" },
+      { re: /\\x[0-9a-fA-F]{2}/, sev: "MEDIUM", desc: "Hex character escapes in strings" },
+      { re: /\\u[0-9a-fA-F]{4}/, sev: "MEDIUM", desc: "Unicode escapes in strings" },
+      { re: /atob\s*\(/i, sev: "HIGH", desc: "atob() — base64 decode in JS" },
+      { re: /new\s+ActiveXObject/i, sev: "CRITICAL", desc: "ActiveXObject — Windows COM/shell access" },
+      { re: /WScript\.Shell/i, sev: "CRITICAL", desc: "WScript.Shell — shell command execution" },
+      { re: /powershell/i, sev: "CRITICAL", desc: "PowerShell invocation" },
+      { re: /cmd\.exe/i, sev: "CRITICAL", desc: "cmd.exe shell launch" },
+      { re: /shellcode/i, sev: "CRITICAL", desc: "Explicit shellcode reference" },
+      { re: /app\.openDoc\s*\(/i, sev: "HIGH", desc: "app.openDoc() — file open via JS" },
+      { re: /app\.launchURL\s*\(/i, sev: "HIGH", desc: "launchURL() — opens URLs from JS" },
+      { re: /this\.exportDataObject/i, sev: "HIGH", desc: "exportDataObject() — file extraction" },
+      { re: /this\.submitForm\s*\(/i, sev: "MEDIUM", desc: "submitForm() — data exfiltration" },
+    ];
+
+    const SUSPICIOUS_METADATA_PRODUCERS = ["exploit", "shellcode", "payload", "metasploit", "msfvenom", "malkit", "injector", "crypter", "packer", "obfus"];
+
+    // ── File drag/drop/select ──────────────────────────────────────
+
+    const dropZone = document.getElementById("dropZone");
+    const fileInput = document.getElementById("fileInput");
+
+    dropZone.addEventListener("click", e => {
+      if (e.target.closest(".remove-file") || e.target.closest(".upload-sub span")) return;
+      if (!currentFile) fileInput.click();
+    });
+    dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+    dropZone.addEventListener("drop", e => {
+      e.preventDefault(); dropZone.classList.remove("dragover");
+      const f = e.dataTransfer.files[0];
+      if (f && (f.type === "application/pdf" || f.name.endsWith(".pdf"))) setFile(f);
+      else showError("Only PDF files are accepted.");
+    });
+    fileInput.addEventListener("change", e => { const f = e.target.files[0]; if (f) setFile(f); });
+
+    function setFile(f) {
+      if (f.size > 10 * 1024 * 1024) { showError("File too large. Maximum size is 10 MB."); return; }
+      currentFile = f;
+      hideError();
+      document.getElementById("fileName").textContent = f.name;
+      document.getElementById("fileSize").textContent = fmtSize(f.size);
+      document.getElementById("fileInfo").style.display = "flex";
+      document.getElementById("analyzeBtn").disabled = false;
+    }
+    function removeFile() {
+      currentFile = null;
+      document.getElementById("fileInfo").style.display = "none";
+      document.getElementById("analyzeBtn").disabled = true;
+      fileInput.value = "";
+      hideError();
+    }
+    function fmtSize(b) {
+      if (b < 1024) return b + " B";
+      if (b < 1048576) return (b / 1024).toFixed(1) + " KB";
+      return (b / 1048576).toFixed(2) + " MB";
+    }
+    function showError(msg) {
+      const el = document.getElementById("errorBanner");
+      document.getElementById("errorMsg").textContent = msg;
+      el.style.display = "flex";
+    }
+    function hideError() { document.getElementById("errorBanner").style.display = "none"; }
+
+    // ── Main analysis entry point ──────────────────────────────────
+
+    async function startAnalysis() {
+      if (!currentFile) return;
+      hideError();
+      document.getElementById("resultsSection").style.display = "none";
+      document.getElementById("progressWrap").style.display = "block";
+      document.getElementById("analyzeBtn").disabled = true;
+
+      const stepsEl = document.getElementById("progressSteps");
+      stepsEl.innerHTML = STEPS.map((s, i) => `<span class="step-pill" id="sp${i}">${s}</span>`).join("");
+
+      try {
+        const bytes = await readFileAsBytes(currentFile);
+        const text = bytesToLatin1(bytes);
+        const result = await runAnalysis(bytes, text, currentFile);
+        document.getElementById("progressWrap").style.display = "none";
+        showResults(result);
+      } catch (err) {
+        document.getElementById("progressWrap").style.display = "none";
+        showError("Analysis failed: " + err.message);
+        document.getElementById("analyzeBtn").disabled = false;
+      }
+    }
+
+    function readFileAsBytes(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = e => resolve(new Uint8Array(e.target.result));
+        r.onerror = () => reject(new Error("Could not read file."));
+        r.readAsArrayBuffer(file);
+      });
+    }
+
+    function bytesToLatin1(bytes) {
+      // Read raw bytes as latin-1 (same as Python's latin-1 decode)
+      let s = "";
+      for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+      return s;
+    }
+
+    // ── Progress helpers ───────────────────────────────────────────
+
+    function stepActive(i) {
+      if (i > 0) document.getElementById(`sp${i - 1}`).className = "step-pill done";
+      const el = document.getElementById(`sp${i}`);
+      if (el) el.className = "step-pill active";
+      const pct = Math.round(((i + 1) / STEPS.length) * 100);
+      document.getElementById("progressBar").style.width = pct + "%";
+      document.getElementById("progressPct").textContent = pct + "%";
+      document.getElementById("progressLabel").textContent = `Step ${i + 1}: ${STEPS[i]}...`;
+    }
+    function stepsDone() {
+      STEPS.forEach((_, i) => { document.getElementById(`sp${i}`).className = "step-pill done"; });
+      document.getElementById("progressBar").style.width = "100%";
+      document.getElementById("progressPct").textContent = "100%";
+      document.getElementById("progressLabel").textContent = "Analysis complete";
+    }
+    function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    // ── Analysis pipeline ──────────────────────────────────────────
+
+    async function runAnalysis(bytes, text, file) {
+      const t0 = performance.now();
+      const result = {};
+
+      // STEP 1 — Load & hash
+      stepActive(0); await wait(80);
+      result.file_info = await stepLoad(bytes, text, file);
+
+      // STEP 2 — Metadata
+      stepActive(1); await wait(60);
+      result.metadata = stepMetadata(text, bytes);
+
+      // STEP 3 — Objects
+      stepActive(2); await wait(60);
+      result.objects = stepObjects(text);
+
+      // STEP 4 — Keywords
+      stepActive(3); await wait(60);
+      result.keywords = stepKeywords(text);
+
+      // STEP 5 — Streams (basic: detect encoded streams)
+      stepActive(4); await wait(80);
+      result.streams = stepStreams(text, bytes);
+
+      // STEP 6 — IOCs
+      stepActive(5); await wait(60);
+      result.iocs = stepIOCs(text);
+
+      // STEP 7 — JavaScript
+      stepActive(6); await wait(60);
+      result.javascript = stepJavaScript(text);
+
+      // STEP 8 — Score
+      stepActive(7); await wait(60);
+      result.risk = stepScore(result);
+
+      // STEP 9 — Report paths (client-side, no files written)
+      stepActive(8); await wait(60);
+      result.analysis_time_seconds = ((performance.now() - t0) / 1000).toFixed(2);
+      stepsDone();
+
+      return result;
+    }
+
+    // ── STEP 1: Load & Hash ────────────────────────────────────────
+
+    async function stepLoad(bytes, text, file) {
+      const header = text.substring(0, 8);
+      const isPDF = text.startsWith("%PDF-");
+      const version = isPDF ? text.substring(5, 8).trim() : "unknown";
+
+      const [md5, sha1, sha256] = await Promise.all([
+        hashBytes(bytes, "MD5-polyfill"),
+        hashDigest(bytes, "SHA-1"),
+        hashDigest(bytes, "SHA-256"),
+      ]);
+
+      return {
+        filename: file.name,
+        size_bytes: bytes.length,
+        size_human: fmtSize(bytes.length),
+        is_pdf: isPDF,
+        pdf_version: version,
+        valid: true,
+        md5,
+        sha1,
+        sha256,
+      };
+    }
+
+    async function hashDigest(bytes, algo) {
+      try {
+        const buf = bytes.buffer.slice ? bytes.buffer : bytes;
+        const hash = await crypto.subtle.digest(algo, buf);
+        return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
+      } catch (e) { return "unavailable"; }
+    }
+
+    // Simple MD5 polyfill since SubtleCrypto doesn't support MD5
+    function hashBytes(bytes, _) {
+      // Using a compact MD5 implementation
+      function md5(buffer) {
+        const rotate = (x, n) => (x << n) | (x >>> (32 - n));
+        const T = Array.from({ length: 64 }, (_, i) => Math.floor(Math.abs(Math.sin(i + 1)) * 0x100000000) >>> 0);
+        let a = 0x67452301, b = 0xefcdab89, c = 0x98badcfe, d = 0x10325476;
+        const bytes2 = new Uint8Array(buffer);
+        const len = bytes2.length;
+        const padLen = len % 64 < 56 ? 56 - (len % 64) : 120 - (len % 64);
+        const padded = new Uint8Array(len + padLen + 8);
+        padded.set(bytes2); padded[len] = 0x80;
+        const bitLen = BigInt(len) * 8n;
+        for (let i = 0; i < 8; i++) padded[len + padLen + i] = Number((bitLen >> BigInt(i * 8)) & 0xffn);
+        const words = new Uint32Array(padded.buffer);
+        for (let i = 0; i < words.length; i += 16) {
+          let [A, B, C, D] = [a, b, c, d];
+          const F = (x, y, z) => (x & y) | (~x & z), G = (x, y, z) => (x & z) | (y & ~z), H = (x, y, z) => x ^ y ^ z, I = (x, y, z) => y ^ (x | (~z));
+          const step = (fn, a, b, c, d, k, s, t) => ((b + rotate((a + fn(b, c, d) + words[i + k] + t) | 0, s)) | 0);
+          const r = (fn, s, t, seq) => seq.forEach(([k], j) => {
+            const tmp = step(fn, A, B, C, D, k, s[j], t[j]);
+            [A, B, C, D] = [D, tmp, B, C];
+            if (fn === I && j === 15) [A, B, C, D] = [D, tmp, B, C];
+          });
+          // Round 1
+          const S1 = [7, 12, 17, 22], T1 = T.slice(0, 16);
+          [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12], [13], [14], [15]].forEach(([k], j) => {
+            const tmp = (A + F(B, C, D) + words[i + k] + T1[j]) | 0;
+            [A, B, C, D] = [D, (B + rotate(tmp, S1[j % 4])) | 0, B, C];
+          });
+          // Round 2
+          const S2 = [5, 9, 14, 20], T2 = T.slice(16, 32);
+          [[1], [6], [11], [0], [5], [10], [15], [4], [9], [14], [3], [8], [13], [2], [7], [12]].forEach(([k], j) => {
+            const tmp = (A + G(B, C, D) + words[i + k] + T2[j]) | 0;
+            [A, B, C, D] = [D, (B + rotate(tmp, S2[j % 4])) | 0, B, C];
+          });
+          // Round 3
+          const S3 = [4, 11, 16, 23], T3 = T.slice(32, 48);
+          [[5], [8], [11], [14], [1], [4], [7], [10], [13], [0], [3], [6], [9], [12], [15], [2]].forEach(([k], j) => {
+            const tmp = (A + H(B, C, D) + words[i + k] + T3[j]) | 0;
+            [A, B, C, D] = [D, (B + rotate(tmp, S3[j % 4])) | 0, B, C];
+          });
+          // Round 4
+          const S4 = [6, 10, 15, 21], T4 = T.slice(48, 64);
+          [[0], [7], [14], [5], [12], [3], [10], [1], [8], [15], [6], [13], [4], [11], [2], [9]].forEach(([k], j) => {
+            const tmp = (A + I(B, C, D) + words[i + k] + T4[j]) | 0;
+            [A, B, C, D] = [D, (B + rotate(tmp, S4[j % 4])) | 0, B, C];
+          });
+          a = (a + A) | 0; b = (b + B) | 0; c = (c + C) | 0; d = (d + D) | 0;
+        }
+        return [a, b, c, d].map(n => { let s = ""; for (let i = 0; i < 4; i++)s += ((n >>> (i * 8)) & 0xff).toString(16).padStart(2, "0"); return s }).join("");
+      }
+      return Promise.resolve(md5(bytes.buffer));
+    }
+
+    // ── STEP 2: Metadata ───────────────────────────────────────────
+
+    function stepMetadata(text, bytes) {
+      const fields = {};
+      const keys = ["Title", "Author", "Subject", "Creator", "Producer", "CreationDate", "ModDate", "Keywords"];
+      keys.forEach(k => {
+        const m = text.match(new RegExp("/" + k + "\\s*\\(([^)]*)\\)"));
+        fields[k] = m ? m[1].trim() : "";
+      });
+
+      const anomalies = [];
+
+      if (fields.CreationDate && fields.ModDate && fields.CreationDate !== fields.ModDate)
+        anomalies.push(`[DATE MISMATCH] Created: ${fields.CreationDate}  Modified: ${fields.ModDate} — possible tampering`);
+
+      const producer = (fields.Producer || "").toLowerCase();
+      SUSPICIOUS_METADATA_PRODUCERS.forEach(kw => {
+        if (producer.includes(kw))
+          anomalies.push(`[SUSPICIOUS PRODUCER] Producer contains '${kw}': ${fields.Producer}`);
+      });
+
+      if (!fields.Author || fields.Author.trim() === "")
+        anomalies.push("[METADATA] Author field is empty — common in automated/malicious PDFs");
+
+      // Count %%EOF markers
+      const eofCount = (text.match(/%%EOF/g) || []).length;
+      if (eofCount > 1)
+        anomalies.push(`[INCREMENTAL UPDATE] ${eofCount} %%EOF markers found — document may have been modified/injected`);
+
+      return { fields, anomalies };
+    }
+
+    // ── STEP 3: Object enumeration ─────────────────────────────────
+
+    function stepObjects(text) {
+      const SUSPICIOUS_TYPES = [
+        { kw: "/JavaScript", sev: "HIGH", reason: "Embedded JavaScript code" },
+        { kw: "/JS", sev: "HIGH", reason: "JavaScript shorthand" },
+        { kw: "/OpenAction", sev: "HIGH", reason: "Action triggered on document open" },
+        { kw: "/Launch", sev: "CRITICAL", reason: "Launches external application" },
+        { kw: "/EmbeddedFile", sev: "HIGH", reason: "File embedded inside PDF" },
+        { kw: "/XFA", sev: "HIGH", reason: "XML Form Architecture exploit surface" },
+        { kw: "/AcroForm", sev: "MEDIUM", reason: "Acrobat form present" },
+        { kw: "/RichMedia", sev: "MEDIUM", reason: "Rich media exploit surface" },
+        { kw: "/AA", sev: "MEDIUM", reason: "Additional Actions — auto-triggered" },
+        { kw: "/URI", sev: "MEDIUM", reason: "External URL reference" },
+        { kw: "/SubmitForm", sev: "MEDIUM", reason: "Form submission — data exfiltration" },
+        { kw: "/ObjStm", sev: "LOW", reason: "Object stream (may hide objects)" },
+      ];
+
+      const totalObjects = (text.match(/\d+\s+\d+\s+obj/g) || []).length;
+      const totalStreams = (text.match(/\bstream\b/g) || []).length;
+      const pageCount = (text.match(/\/Type\s*\/Page\b/g) || []).length;
+      const suspicious = [];
+
+      SUSPICIOUS_TYPES.forEach(({ kw, sev, reason }) => {
+        const regex = new RegExp(kw.replace("/", "\\\/"), "gi");
+        const matches = text.match(regex) || [];
+        if (matches.length > 0)
+          suspicious.push({ keyword: kw, severity: sev, reason, count: matches.length, id: "—" });
+      });
+
+      const filterChains = [];
+      const fc = text.match(/\/Filter\s*\[([^\]]+)\]/g) || [];
+      fc.forEach(f => {
+        const filters = (f.match(/\/\w+/g) || []).filter(x => x !== "/Filter");
+        if (filters.length > 1) filterChains.push("Multi-filter chain: " + filters.join(" → "));
+      });
+
+      return { total_objects: totalObjects, total_streams: totalStreams, page_count: pageCount, suspicious_objects: suspicious, filter_chains: filterChains };
+    }
+
+    // ── STEP 4: Keyword scan ───────────────────────────────────────
+
+    function stepKeywords(text) {
+      const found = [];
+      let totalScore = 0;
+      const lower = text.toLowerCase();
+
+      KEYWORD_DB.forEach(({ kw, sev, pts, desc }) => {
+        const needle = kw.toLowerCase();
+        let count = 0, pos = 0;
+        while ((pos = lower.indexOf(needle, pos)) !== -1) { count++; pos += needle.length; }
+        if (count > 0) {
+          found.push({ keyword: kw, severity: sev, score: pts, count, description: desc });
+          totalScore += pts;
+        }
+      });
+
+      // Deduplicate /JavaScript + /JS overlap
+      const hasJS = found.some(f => f.keyword === "/JavaScript");
+      const hasJS2 = found.some(f => f.keyword === "/JS");
+      if (hasJS && hasJS2) totalScore -= 10;
+
+      return { found, total_score: Math.min(totalScore, 40) };
+    }
+
+    // ── STEP 5: Streams ────────────────────────────────────────────
+
+    function stepStreams(text, bytes) {
+      const streamMatches = text.match(/\/Filter\s*\/(\w+)/g) || [];
+      const encodingTypes = [...new Set(streamMatches.map(m => {
+        const m2 = m.match(/\/Filter\s*\/(\w+)/); return m2 ? m2[1] : null;
+      }).filter(Boolean))];
+
+      const streamBlocks = (text.match(/stream[\r\n]([\s\S]*?)[\r\n]endstream/g) || []);
+      let highEntropy = 0;
+      streamBlocks.forEach(block => {
+        const data = block.replace(/^stream[\r\n]/, "").replace(/[\r\n]endstream$/, "");
+        if (data.length > 100 && shannonEntropy(data) > 6.5) highEntropy++;
+      });
+
+      return {
+        decoded_count: streamBlocks.length,
+        failed_count: 0,
+        encoding_types: encodingTypes,
+        high_entropy_streams: highEntropy,
+      };
+    }
+
+    function shannonEntropy(str) {
+      const freq = {};
+      for (const c of str) freq[c] = (freq[c] || 0) + 1;
+      const n = str.length;
+      return -Object.values(freq).reduce((s, f) => {
+        const p = f / n; return s + p * Math.log2(p);
+      }, 0);
+    }
+
+    // ── STEP 6: IOC extraction ─────────────────────────────────────
+
+    function stepIOCs(text) {
+      // URLs
+      const urlRe = /https?:\/\/[^\s\)\]>"'<\x00-\x1f]{4,}/gi;
+      const uriRe = /\/URI\s*\(([^)]+)\)/gi;
+      const urls = [...new Set([
+        ...(text.match(urlRe) || []),
+        ...[...text.matchAll(uriRe)].map(m => m[1].trim()),
+      ])];
+
+      // IPs
+      const ipRe = /\b((?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g;
+      const ips = [...new Set((text.match(ipRe) || []).filter(ip =>
+        !ip.startsWith("0.") && !ip.startsWith("127.") && !ip.startsWith("255.") && ip !== "0.0.0.0"
+      ))];
+
+      // Emails
+      const emailRe = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+      const emails = [...new Set(text.match(emailRe) || [])];
+
+      // Embedded executable files
+      const efRe = /\/F\s*\(([^)]{3,100}\.(?:exe|dll|vbs|js|bat|ps1|sh|py|jar|cmd|scr|com|bin))\)/gi;
+      const embedded_files = [...new Set([...text.matchAll(efRe)].map(m => m[1].trim()))];
+
+      // CVEs (explicit)
+      const cveRe = /CVE-\d{4}-\d{4,7}/gi;
+      const cves = [...new Set((text.match(cveRe) || []).map(c => c.toUpperCase()))];
+
+      // Implicit CVEs from known exploit strings
+      const CVE_MAP = {
+        "spell.customDictionaryOpen": "CVE-2009-0927",
+        "media.newPlayer": "CVE-2009-4324",
+        "Collab.collectEmailInfo": "CVE-2007-0478",
+        "util.printf": "CVE-2008-2992",
+        "getIcon": "CVE-2009-0927",
+      };
+      const implicitCves = [];
+      Object.entries(CVE_MAP).forEach(([method, cve]) => {
+        if (text.toLowerCase().includes(method.toLowerCase()))
+          implicitCves.push(`${cve} (implicit — '${method}' detected)`);
+      });
+
+      const allCves = [...new Set([...cves, ...implicitCves])];
+
+      return {
+        urls, ips, emails, embedded_files,
+        cves: allCves,
+        total: urls.length + ips.length + allCves.length + embedded_files.length,
+      };
+    }
+
+    // ── STEP 7: JavaScript analysis ────────────────────────────────
+
+    function stepJavaScript(text) {
+      // Count JS blocks
+      const jsBlocks1 = text.match(/\/(?:JS|JavaScript)\s*\([^)]{10,}\)/gi) || [];
+      const jsBlocks2 = text.match(/\/(?:JS|JavaScript)[^>]*>>[^<]*<<[^>]*>>\s*stream[\s\S]*?endstream/gi) || [];
+      const jsBlocks3 = text.match(/(?:function\s+\w+\s*\([^)]*\)\s*\{|var\s+\w+\s*=.{10,}|eval\s*\([^)]+\))/gi) || [];
+      const js_block_count = jsBlocks1.length + jsBlocks2.length + Math.min(jsBlocks3.length, 10);
+
+      // Detect obfuscation patterns
+      const obfuscation_patterns = [];
+      OBFUSCATION_PATTERNS.forEach(({ re, sev, desc }) => {
+        if (re.test(text)) obfuscation_patterns.push(`[${sev}] ${desc}`);
+      });
+
+      // Auto-actions
+      const AUTO_ACTIONS = [
+        { kw: "/OpenAction", sev: "CRITICAL", desc: "Executes on document open" },
+        { kw: "/AA", sev: "HIGH", desc: "Additional Actions — event-triggered" },
+        { kw: "/WillClose", sev: "MEDIUM", desc: "WillClose event handler" },
+        { kw: "/WillSave", sev: "MEDIUM", desc: "WillSave event handler" },
+      ];
+      const auto_actions = AUTO_ACTIONS
+        .filter(({ kw }) => text.toLowerCase().includes(kw.toLowerCase()))
+        .map(({ kw, sev, desc }) => `[${sev}] ${kw}: ${desc}`);
+
+      // Heap spray detection
+      const risk_indicators = [];
+      const heapSprayRe = /\.repeat\s*\(\s*\d{3,}\s*\)|for\s*\([^)]*\d{4,}[^)]*\)[\s\S]{0,80}\+[=\+]/i;
+      if (heapSprayRe.test(text))
+        risk_indicators.push("[CRITICAL] Heap spray pattern detected — common exploit memory preparation");
+
+      return { js_block_count, obfuscation_patterns, auto_actions, risk_indicators };
+    }
+
+    // ── STEP 8: Scoring ────────────────────────────────────────────
+
+    function stepScore(results) {
+      let score = 0;
+      const breakdown = [];
+      const indicators = [];
+
+      const kw = results.keywords || {};
+      const ioc = results.iocs || {};
+      const js = results.javascript || {};
+      const st = results.streams || {};
+      const meta = results.metadata || {};
+      const obj = results.objects || {};
+
+      // Keywords (cap 40)
+      const kwScore = Math.min(kw.total_score || 0, 40);
+      if (kwScore > 0) {
+        breakdown.push(`Keyword scan          : +${kwScore} pts  (${(kw.found || []).length} keywords)`);
+        score += kwScore;
+      }
+
+      // CVEs (cap 30)
+      const cveScore = Math.min((ioc.cves || []).length * 15, 30);
+      if (cveScore > 0) { breakdown.push(`CVE references        : +${cveScore} pts  (${ioc.cves.length} CVE(s))`); score += cveScore; }
+
+      // Embedded files (cap 24)
+      const efScore = Math.min((ioc.embedded_files || []).length * 12, 24);
+      if (efScore > 0) { breakdown.push(`Embedded executables  : +${efScore} pts  (${ioc.embedded_files.length} file(s))`); score += efScore; }
+
+      // URLs (cap 12)
+      const urlScore = Math.min((ioc.urls || []).length * 3, 12);
+      if (urlScore > 0) { breakdown.push(`External URLs         : +${urlScore} pts  (${ioc.urls.length} URL(s))`); score += urlScore; }
+
+      // IPs (cap 12)
+      const ipScore = Math.min((ioc.ips || []).length * 4, 12);
+      if (ipScore > 0) { breakdown.push(`IP addresses          : +${ipScore} pts  (${ioc.ips.length} IP(s))`); score += ipScore; }
+
+      // JS blocks (cap 15)
+      const jsBlockScore = Math.min((js.js_block_count || 0) * 5, 15);
+      if (jsBlockScore > 0) { breakdown.push(`JavaScript blocks     : +${jsBlockScore} pts  (${js.js_block_count} block(s))`); score += jsBlockScore; }
+
+      // Obfuscation (cap 20)
+      const obfusScore = Math.min((js.obfuscation_patterns || []).length * 4, 20);
+      if (obfusScore > 0) { breakdown.push(`Obfuscation patterns  : +${obfusScore} pts  (${js.obfuscation_patterns.length} pattern(s))`); score += obfusScore; }
+
+      // Auto-actions (cap 15)
+      const autoScore = Math.min((js.auto_actions || []).length * 5, 15);
+      if (autoScore > 0) { breakdown.push(`Auto-execute actions  : +${autoScore} pts  (${js.auto_actions.length} action(s))`); score += autoScore; }
+
+      // Heap spray
+      if ((js.risk_indicators || []).some(r => r.includes("heap spray"))) {
+        breakdown.push("Heap spray detected   : +15 pts"); score += 15;
+      }
+
+      // High entropy streams (cap 15)
+      const entScore = Math.min((st.high_entropy_streams || 0) * 5, 15);
+      if (entScore > 0) { breakdown.push(`High-entropy streams  : +${entScore} pts  (${st.high_entropy_streams} stream(s))`); score += entScore; }
+
+      // Metadata anomalies (cap 9)
+      const metaScore = Math.min((meta.anomalies || []).length * 3, 9);
+      if (metaScore > 0) { breakdown.push(`Metadata anomalies    : +${metaScore} pts  (${meta.anomalies.length} anomaly(s))`); score += metaScore; }
+
+      // Filter chains (cap 9)
+      const chainScore = Math.min((obj.filter_chains || []).length * 3, 9);
+      if (chainScore > 0) { breakdown.push(`Filter chains         : +${chainScore} pts`); score += chainScore; }
+
+      score = Math.min(score, 100);
+
+      const severity = score >= 90 ? "CRITICAL" : score >= 70 ? "HIGH" : score >= 40 ? "MEDIUM" : score >= 10 ? "LOW" : "CLEAN";
+
+      const mitigations = getMitigations(severity);
+
+      return { score, severity, breakdown, indicators, mitigations };
+    }
+
+    function getMitigations(sev) {
+      const base = [
+        "Do NOT open this file on a production system.",
+        "Quarantine the file immediately if found on an endpoint.",
+        "Compute and submit the file hash to VirusTotal for reputation check.",
+      ];
+      if (sev === "CRITICAL" || sev === "HIGH") base.push(
+        "Initiate incident response if this file was already opened.",
+        "Check EDR/SIEM logs for child processes spawned by PDF readers.",
+        "Block associated URLs/IPs at firewall and proxy level.",
+        "Disable JavaScript in PDF reader: Edit > Preferences > JavaScript.",
+        "Scan all systems that received this file via email or file share."
+      );
+      if (sev === "MEDIUM") base.push(
+        "Submit to sandbox (Any.run / Hybrid Analysis) for behavioral analysis.",
+        "Review network logs for connections to extracted URLs/IPs."
+      );
+      base.push(
+        "Update PDF reader software to latest patched version.",
+        "Train users to report suspicious email attachments.",
+        "Implement email gateway filtering for PDFs with embedded JavaScript."
+      );
+      return base;
+    }
+
+    // ── Render results ─────────────────────────────────────────────
+
+    function showResults(r) {
+      lastResult = r;
+      document.getElementById("resultsSection").style.display = "block";
+
+      const risk = r.risk || {}, sc = risk.score || 0, sev = risk.severity || "CLEAN";
+      const col = SEV_COLORS[sev] || SEV_COLORS.CLEAN;
+
+      // Score ring
+      const ring = document.getElementById("scoreRing");
+      ring.style.strokeDashoffset = 314 - (sc / 100) * 314;
+      ring.style.stroke = col.ring;
+      document.getElementById("scoreNum").textContent = sc;
+      document.getElementById("scoreNum").style.color = col.text;
+
+      const badge = document.getElementById("severityBadge");
+      badge.textContent = sev;
+      badge.style.background = col.bg;
+      badge.style.border = "1px solid " + col.border;
+      badge.style.color = col.text;
+
+      const kw = r.keywords || {}, js = r.javascript || {}, ioc = r.iocs || {}, st = r.streams || {}, fi = r.file_info || {};
+      document.getElementById("statKeywords").textContent = (kw.found || []).length;
+      document.getElementById("statJS").textContent = js.js_block_count || 0;
+      document.getElementById("statIOC").textContent = ioc.total || 0;
+      document.getElementById("statStreams").textContent = st.decoded_count || 0;
+      document.getElementById("statObfus").textContent = (js.obfuscation_patterns || []).length;
+      document.getElementById("statSize").textContent = fi.size_human || "—";
+
+      renderChart(risk.breakdown || []);
+
+      // Keywords panel
+      const kwFound = kw.found || [];
+      document.getElementById("keywordsPanel").innerHTML = kwFound.length
+        ? kwFound.map(k => `
+        <div class="finding-row">
+          <div class="sev-dot" style="background:${DOT_COLORS[k.severity] || DOT_COLORS.INFO}"></div>
+          <div class="finding-kw">${esc(k.keyword)}</div>
+          <div class="finding-desc">${esc(k.description)} <span style="color:var(--text3)">×${k.count}</span></div>
+          <div class="finding-pts" style="color:${DOT_COLORS[k.severity] || DOT_COLORS.INFO}">+${k.score}</div>
+        </div>`).join("")
+        : `<div class="empty-state"><i class="ti ti-check-circle"></i> No suspicious keywords found</div>`;
+
+      // IOC panel
+      let iocHtml = "";
+      (ioc.urls || []).forEach(u => { iocHtml += `<span class="ioc-tag ioc-url"><i class="ti ti-link" style="font-size:12px"></i>${esc(u)}</span>`; });
+      (ioc.ips || []).forEach(ip => { iocHtml += `<span class="ioc-tag ioc-ip"><i class="ti ti-server" style="font-size:12px"></i>${esc(ip)}</span>`; });
+      (ioc.embedded_files || []).forEach(f => { iocHtml += `<span class="ioc-tag ioc-file"><i class="ti ti-file-zip" style="font-size:12px"></i>${esc(f)}</span>`; });
+      (ioc.cves || []).forEach(c => { iocHtml += `<span class="ioc-tag ioc-cve"><i class="ti ti-alert-hexagon" style="font-size:12px"></i>${esc(c)}</span>`; });
+      document.getElementById("iocPanel").innerHTML = iocHtml || `<div class="empty-state"><i class="ti ti-check-circle"></i> No IOCs detected</div>`;
+
+      // JS panel
+      let jsHtml = "";
+      (js.auto_actions || []).forEach(a => { jsHtml += `<div class="anomaly-item"><i class="ti ti-player-play"></i><span>${esc(a)}</span></div>`; });
+      (js.obfuscation_patterns || []).forEach(p => { jsHtml += `<div class="anomaly-item"><i class="ti ti-code"></i><span>${esc(p)}</span></div>`; });
+      (js.risk_indicators || []).forEach(ri => { jsHtml += `<div class="anomaly-item"><i class="ti ti-alert-triangle" style="color:var(--red)"></i><span>${esc(ri)}</span></div>`; });
+      document.getElementById("jsPanel").innerHTML = jsHtml || `<div class="empty-state"><i class="ti ti-check-circle"></i> No JavaScript detected</div>`;
+
+      // Metadata anomalies
+      const anomalies = (r.metadata || {}).anomalies || [];
+      document.getElementById("metaAnomalies").innerHTML = anomalies.length
+        ? anomalies.map(a => `<div class="anomaly-item"><i class="ti ti-alert-triangle"></i><span>${esc(a)}</span></div>`).join("")
+        : `<div class="empty-state"><i class="ti ti-check-circle"></i> No anomalies detected</div>`;
+
+      // Meta table
+      const meta = (r.metadata || {}).fields || {};
+      const rows = [
+        ["Filename", fi.filename], ["Size", fi.size_human],
+        ["PDF version", fi.pdf_version], ["Valid PDF", fi.is_pdf ? "Yes" : "No"],
+        ["Title", meta.Title], ["Author", meta.Author || "(empty)"],
+        ["Creator", meta.Creator], ["Producer", meta.Producer],
+      ];
+      document.querySelector("#metaTable tbody").innerHTML = rows
+        .filter(r => r[1])
+        .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(String(v))}</td></tr>`)
+        .join("");
+
+      // Hashes
+      document.getElementById("hashPanel").innerHTML = [["MD5", fi.md5], ["SHA-1", fi.sha1], ["SHA-256", fi.sha256]]
+        .map(([l, v]) => `
+      <div class="hash-row">
+        <span class="hash-label">${l}</span>
+        <span class="hash-val" title="${esc(v || "")}">${esc(v || "—")}</span>
+        <span class="copy-btn" onclick="copyText('${(v || "").replace(/'/g, "\\'")}')"><i class="ti ti-copy" style="font-size:13px"></i></span>
+      </div>`).join("");
+
+      // Mitigations
+      document.getElementById("mitList").innerHTML = (risk.mitigations || [])
+        .map(m => `<li><i class="ti ti-arrow-right"></i><span>${esc(m)}</span></li>`).join("");
+
+      document.getElementById("downloadInfo").textContent = `${fi.filename} · Score: ${sc}/100 · ${sev} · ${r.analysis_time_seconds}s`;
+
+      document.getElementById("resultsSection").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function renderChart(breakdown) {
+      const labels = [], data = [], colors = [];
+      breakdown.forEach(line => {
+        const m = line.match(/^(.+?)\s*:\s*\+(\d+)/);
+        if (m) {
+          labels.push(m[1].trim());
+          const pts = parseInt(m[2]);
+          data.push(pts);
+          colors.push(pts >= 15 ? "#e24b4a" : pts >= 10 ? "#ef9f27" : pts >= 6 ? "#378ADD" : "#1D9E75");
+        }
+      });
+      if (chartInst) { chartInst.destroy(); chartInst = null; }
+      if (!labels.length) return;
+      chartInst = new Chart(document.getElementById("breakdownChart").getContext("2d"), {
+        type: "bar",
+        data: { labels, datasets: [{ label: "pts", data, backgroundColor: colors.map(c => c + "99"), borderColor: colors, borderWidth: 1, borderRadius: 4 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => " +" + c.parsed.y + " pts" } } },
+          scales: {
+            x: { ticks: { color: "#555a6a", font: { size: 10 }, maxRotation: 35, autoSkip: false }, grid: { color: "#ffffff08" } },
+            y: { ticks: { color: "#555a6a", font: { size: 10 } }, grid: { color: "#ffffff08" } }
+          }
+        }
+      });
+    }
+
+    // ── Utilities ──────────────────────────────────────────────────
+
+    function copyText(t) { navigator.clipboard.writeText(t).catch(() => { }); }
+    function esc(s) {
+      return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    function resetApp() {
+      currentFile = null; lastResult = null;
+      document.getElementById("fileInfo").style.display = "none";
+      document.getElementById("analyzeBtn").disabled = true;
+      document.getElementById("resultsSection").style.display = "none";
+      document.getElementById("progressWrap").style.display = "none";
+      fileInput.value = ""; hideError();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function buildTXT(r) {
+      const risk = r.risk || {}, fi = r.file_info || {}, ioc = r.iocs || {}, js = r.javascript || {}, kw = r.keywords || {};
+      const sep = "=".repeat(60);
+      const lines = [
+        sep, "  PMAT — PDF MALWARE ANALYSIS REPORT", "  Automated Static Analysis Toolkit v1.0", sep,
+        `  File     : ${fi.filename}`, `  Size     : ${fi.size_human}`,
+        `  MD5      : ${fi.md5}`, `  SHA-256  : ${fi.sha256}`, "",
+        "  RISK ASSESSMENT", sep,
+        `  Score    : ${risk.score}/100`, `  Severity : ${risk.severity}`, "",
+        "  Score Breakdown:",
+        ...(risk.breakdown || []).map(b => "    " + b), "",
+        "  KEYWORDS FOUND", sep,
+        ...(kw.found || []).map(k => `  [${k.severity}] ${k.keyword} (×${k.count}) +${k.score}pts — ${k.description}`), "",
+        "  IOCs", sep,
+        ...(ioc.urls || []).map(u => "  [URL]  " + u),
+        ...(ioc.ips || []).map(i => "  [IP]   " + i),
+        ...(ioc.embedded_files || []).map(f => "  [FILE] " + f),
+        ...(ioc.cves || []).map(c => "  [CVE]  " + c), "",
+        "  JAVASCRIPT", sep,
+        `  Blocks: ${js.js_block_count}`,
+        ...(js.obfuscation_patterns || []).map(p => "  " + p),
+        ...(js.auto_actions || []).map(a => "  " + a), "",
+        "  MITIGATIONS", sep,
+        ...(risk.mitigations || []).map((m, i) => `  ${i + 1}. ${m}`), "",
+        sep, "  END OF REPORT — PMAT v1.0", sep,
+      ];
+      return lines.join("\n");
+    }
+
+    function downloadJSON() {
+      if (!lastResult) return;
+      dl(new Blob([JSON.stringify(lastResult, null, 2)], { type: "application/json" }), "pmat_report.json");
+    }
+    function downloadTXT() {
+      if (!lastResult) return;
+      dl(new Blob([buildTXT(lastResult)], { type: "text/plain" }), "pmat_report.txt");
+    }
+    function dl(blob, name) {
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    }
+  </script>
+</body>
+
+</html>
