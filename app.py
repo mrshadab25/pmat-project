@@ -1,16 +1,7 @@
-#!/usr/bin/env python3
-"""
-Flask Web Interface for PMAT — PDF Malware Analysis Toolkit
-"""
-
-from flask import Flask, request, jsonify, render_template_string
-import os, sys, tempfile, traceback
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pmat import analyze_pdf
+from flask import Flask, request, render_template_string
+from PyPDF2 import PdfReader
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
 
 HTML = """
 <!DOCTYPE html>
@@ -558,37 +549,55 @@ function renderResult(d) {
 </html>
 """
 
-@app.route('/')
-def index():
-    return render_template_string(HTML)
+@app.route("/", methods=["GET", "POST"])
+def home():
 
-@app.route('/analyze', methods=['POST'])
-def analyze():
-    if 'pdf' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
+    filename = None
+    malicious = False
 
-    file = request.files['pdf']
-    if not file.filename or not file.filename.endswith('.pdf'):
-        return jsonify({'error': 'Please upload a valid PDF file'}), 400
+    if request.method == "POST":
 
-    tmp_path = None
-    try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', prefix='pmat_') as tmp:
-            file.save(tmp.name)
-            tmp_path = tmp.name
+        file = request.files["pdf_file"]
 
-        os.makedirs('reports', exist_ok=True)
-        result = analyze_pdf(tmp_path, "reports", verbose=False, json_only=True)
-        return jsonify(result)
+        if file:
 
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+            filename = file.filename
 
-    finally:
-        if tmp_path and os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+            try:
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+                reader = PdfReader(file)
+
+                text = ""
+
+                for page in reader.pages:
+                    extracted = page.extract_text()
+
+                    if extracted:
+                        text += extracted.lower()
+
+                suspicious_keywords = [
+                    "javascript",
+                    "eval",
+                    "powershell",
+                    "cmd.exe",
+                    "shellcode",
+                    "malware"
+                ]
+
+                for keyword in suspicious_keywords:
+
+                    if keyword in text:
+                        malicious = True
+                        break
+
+            except:
+                malicious = True
+
+    return render_template_string(
+        HTML,
+        filename=filename,
+        malicious=malicious
+    )
+
+if __name__ == "__main__":
+    app.run()
