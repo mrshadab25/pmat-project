@@ -3,3 +3,8 @@ pikepdf
 pdfminer.six
 pypdf
 PyPDF2
+pypdf2
+pdfminer.six
+scikit-learn
+numpy
+pandas
