@@ -2,3 +2,4 @@ flask
 pikepdf
 pdfminer.six
 pypdf
+PyPDF2
